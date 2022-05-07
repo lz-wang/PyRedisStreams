@@ -1,0 +1,14 @@
+# docker run -p 6379:6379 -v /home/user/data:/data -v /home/user/redis.conf:/usr/local/etc/redis/redis.conf redislabs/redismod /usr/local/etc/redis/redis.conf
+version: "3.2"
+
+services:
+  redis-server:
+    privileged: true
+    image: redislabs/redismod
+    container_name: redis-streams
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+      # - ./redis.conf:/usr/local/etc/redis/redis.conf
