@@ -43,12 +43,12 @@ class RedisStreamsClient(object):
         log.success(f'Redis Streams {self.redis_key} joined group {self.consumer_group} '
                     f'as consumer={self.consumer_name} OK!')
 
-    def get_steams_info(self):
-        """获取当前 redis streams 的信息"""
+    def get_steam_info(self):
+        """获取当前 redis stream 的信息"""
         return self.client.xinfo_stream(self.redis_key)
 
     def list_groups(self) -> Dict[str, ConsumerGroup]:
-        """获取当前 redis streams 中的消费者群组信息
+        """获取当前 redis stream 中的消费者群组信息
 
         Returns: consumer groups in current streams
 
@@ -82,7 +82,7 @@ class RedisStreamsClient(object):
         return consumers
 
     def add_msg(self, data: dict):
-        """向指定的 redis streams 中新增消息
+        """向指定的 redis stream 中新增消息
 
         Args:
             data: message data(must be dict type)
@@ -101,11 +101,12 @@ class RedisStreamsClient(object):
             log.error(f'Redis stream put data error, detail: {e}, {format_exc()}')
             return False
 
-    def listen_msg(self, callback):
+    def listen_msg(self, callback, block: int = 30000):
         """监听指定消费者群组的消息并回调函数
 
         Args:
-            callback: the function to callback
+            callback: 回调函数，用于处理stream消息
+            block: 阻塞时长(ms)
 
         Returns: None
 
@@ -113,23 +114,17 @@ class RedisStreamsClient(object):
         if not self.consumer_group or not self.consumer_name:
             log.error(f'To listen message, client must be initialized with group and consumer.')
             return
-        interval = 1
         while True:
             try:
                 if response := self.client.xreadgroup(
                         groupname=self.consumer_group, consumername=self.consumer_name,
-                        streams={self.redis_key: ">"}, count=1):
+                        streams={self.redis_key: ">"}, block=block, count=1):
                     msg = self._parse_msg_response(response)
                     log.info(f'GET message OK, msg={msg.json()}')
                     callback(msg)
-                    interval = 0.01
-                else:
-                    interval = 1
             except Exception as e:
                 log.error(f'Redis stream listen message error, detail: {e}, {format_exc()}')
-                interval = 10
-            finally:
-                time.sleep(interval)
+                time.sleep(10)
 
     def ack_msg(self, msg: StreamsMessage):
         """确认某条信息已消费
